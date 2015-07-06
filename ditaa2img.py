@@ -13,6 +13,7 @@ __version__ = '1.1'
 
 import os, sys, tempfile
 from optparse import *
+import shutil
 import md5
 
 
@@ -128,19 +129,16 @@ class Application():
                 options += " --scale %f" % self.options.scale
             if self.options.tabs:
                 options += " --tabs %d" % self.options.tabs
-            digest1 = self.hash(infile, options.replace(" -v", ""))
-            hashfile = outfile + ".hash"
-            if os.path.isfile(hashfile) and os.path.isfile(outfile):
-                digest2 = open(hashfile).read()
+            digest1 = self.hash(infile, options.replace(" -v", ""))[0:12]
+            cachefile = os.path.join(outdir, digest1) + ".tmp"
+            if os.path.isfile(cachefile):
+		print_verbose("Cache hit: %s -> %s" % (cachefile, outfile))
+                shutil.copy(cachefile, outfile)
             else:
-                digest2 = ""
-            if digest1 == digest2:
-                print_verbose("hit: %s %s" % (outfile, hashfile))
-            else:
-                print_verbose("miss: %s %s" % (outfile, hashfile))
+		print_verbose("Cache miss: %s" % outfile)
                 systemcmd('java -jar "%s" "%s" "%s" %s' % (
                           DITAA_PATH, infile, outfile, options))
-                open(hashfile, 'w').write(digest1)
+                shutil.copy(outfile, cachefile)
         finally:
             if temp:
                 os.remove(temp.name)
